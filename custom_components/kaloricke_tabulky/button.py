@@ -8,12 +8,13 @@ from urllib.parse import urljoin
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, UnknownUser, Unauthorized
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
+from .account import account_label, is_owner_or_admin, owner_user_id
 from .api import KalorickeTabulkyError
 from .const import CONF_QUICK_FOODS, DOMAIN
 from .coordinator import KalorickeTabulkyCoordinator
@@ -59,7 +60,7 @@ class QuickFoodButton(CoordinatorEntity[KalorickeTabulkyCoordinator], ButtonEnti
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry.entry_id)},
             manufacturer="Kaloricke Tabulky",
-            name=self._entry.title,
+            name=account_label(self._entry),
         )
 
     @property
@@ -84,8 +85,28 @@ class QuickFoodButton(CoordinatorEntity[KalorickeTabulkyCoordinator], ButtonEnti
             "image_class": self._preset.get("image_class") or "foodstuff",
         }
 
+    async def _async_assert_allowed_user(self) -> None:
+        """Defense in depth for button presses.
+
+        Home Assistant already checks the button.press entity service against
+        the user's permissions. This extra check makes sure a button owned by
+        another household member cannot write to this account even if entity
+        permissions were left wide open. Automation calls have no user_id and
+        stay allowed.
+        """
+        context = getattr(self, "_context", None)
+        user_id = getattr(context, "user_id", None)
+        if not user_id or not owner_user_id(self._entry):
+            return
+        user = await self.hass.auth.async_get_user(user_id)
+        if user is None:
+            raise UnknownUser(context=context)
+        if not is_owner_or_admin(user, self._entry):
+            raise Unauthorized(context=context)
+
     async def async_press(self) -> None:
         """Record the preset food using the current Home Assistant time."""
+        await self._async_assert_allowed_user()
         now = dt_util.now()
         try:
             await self.coordinator.api.async_record_food(

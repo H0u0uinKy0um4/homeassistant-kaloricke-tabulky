@@ -26,6 +26,8 @@ def _load_button():
 
     exceptions = types.ModuleType("homeassistant.exceptions")
     exceptions.HomeAssistantError = type("HomeAssistantError", (Exception,), {})
+    exceptions.Unauthorized = type("Unauthorized", (Exception,), {})
+    exceptions.UnknownUser = type("UnknownUser", (Exception,), {})
 
     device_registry = types.ModuleType("homeassistant.helpers.device_registry")
     device_registry.DeviceInfo = dict
@@ -60,6 +62,8 @@ def _load_button():
 
     const = types.ModuleType("custom_components.kaloricke_tabulky.const")
     const.CONF_QUICK_FOODS = "quick_foods"
+    const.CONF_ACCOUNT_LABEL = "account_label"
+    const.CONF_OWNER_USER_ID = "owner_user_id"
     const.DOMAIN = "kaloricke_tabulky"
 
     coordinator = types.ModuleType("custom_components.kaloricke_tabulky.coordinator")

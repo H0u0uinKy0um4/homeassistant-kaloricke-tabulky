@@ -7,7 +7,8 @@
         "description": "Enter your Kaloricke Tabulky credentials. The password is used only to sign in and create a session cookie.",
         "data": {
           "email": "Email",
-          "password": "Password"
+          "password": "Password",
+          "account_label": "Account label (optional)"
         }
       }
     },
@@ -29,7 +30,16 @@
           "update_credentials": "Update login credentials",
           "add_quick_food": "Add quick food button",
           "import_recipes": "Import custom recipe buttons",
-          "remove_quick_food": "Remove quick food button"
+          "remove_quick_food": "Remove quick food button",
+          "account": "Account and owner"
+        }
+      },
+      "account": {
+        "title": "Account and owner",
+        "description": "Give this account a name shown in the UI instead of the email, and choose the Home Assistant user who owns it. Owners automatically target their own account in actions.",
+        "data": {
+          "account_label": "Account label",
+          "owner_user_id": "Home Assistant user"
         }
       },
       "general": {
@@ -240,7 +250,11 @@
       "fields": {
         "config_entry_id": {
           "name": "Config entry ID",
-          "description": "Optional account entry ID. Required only when multiple accounts are configured."
+          "description": "Optional account entry ID. Overrides the account field. Actions may only target another user's account when the caller is an admin or an automation."
+        },
+        "account": {
+          "name": "Account label",
+          "description": "Optional account label from the integration options. Defaults to the calling user's own account when one is assigned."
         },
         "weight": {
           "name": "Weight",
@@ -258,7 +272,11 @@
       "fields": {
         "config_entry_id": {
           "name": "Config entry ID",
-          "description": "Optional account entry ID. Required only when multiple accounts are configured."
+          "description": "Optional account entry ID. Overrides the account field. Actions may only target another user's account when the caller is an admin or an automation."
+        },
+        "account": {
+          "name": "Account label",
+          "description": "Optional account label from the integration options. Defaults to the calling user's own account when one is assigned."
         },
         "query": {
           "name": "Query",
@@ -280,7 +298,11 @@
       "fields": {
         "config_entry_id": {
           "name": "Config entry ID",
-          "description": "Optional account entry ID. Required only when multiple accounts are configured."
+          "description": "Optional account entry ID. Overrides the account field. Actions may only target another user's account when the caller is an admin or an automation."
+        },
+        "account": {
+          "name": "Account label",
+          "description": "Optional account label from the integration options. Defaults to the calling user's own account when one is assigned."
         },
         "query": {
           "name": "Query",

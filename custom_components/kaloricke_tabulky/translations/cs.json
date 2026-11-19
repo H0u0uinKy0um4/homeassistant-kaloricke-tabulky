@@ -7,7 +7,8 @@
         "description": "Zadej přihlašovací údaje do Kalorických Tabulek. Heslo se použije jen pro přihlášení a vytvoření session cookie.",
         "data": {
           "email": "E-mail",
-          "password": "Heslo"
+          "password": "Heslo",
+          "account_label": "Popisek účtu (nepovinné)"
         }
       }
     },
@@ -29,7 +30,16 @@
           "update_credentials": "Aktualizovat přihlášení",
           "add_quick_food": "Přidat rychlé tlačítko jídla",
           "import_recipes": "Importovat tlačítka vlastních receptů",
-          "remove_quick_food": "Odebrat rychlé tlačítko jídla"
+          "remove_quick_food": "Odebrat rychlé tlačítko jídla",
+          "account": "Účet a vlastník"
+        }
+      },
+      "account": {
+        "title": "Účet a vlastník",
+        "description": "Pojmenuj tento účet tak, jak se má zobrazovat v rozhraní místo e-mailu, a vyber Home Assistant uživatele, kterému patří. Vlastníci v akcích automaticky pracují se svým účtem.",
+        "data": {
+          "account_label": "Popisek účtu",
+          "owner_user_id": "Uživatel Home Assistantu"
         }
       },
       "general": {
@@ -240,7 +250,11 @@
       "fields": {
         "config_entry_id": {
           "name": "ID nastavení integrace",
-          "description": "Volitelné ID účtu. Je potřeba jen v případě, že je nastaveno více účtů."
+          "description": "Volitelné ID účtu. Má přednost před polem account. Cizí účet může volající uživatel použít jen pokud je správce nebo akce pochází z automatizace."
+        },
+        "account": {
+          "name": "Popisek účtu",
+          "description": "Volitelný popisek účtu z nastavení integrace. Výchozí je vlastní účet volajícího uživatele, pokud je přiřazený."
         },
         "weight": {
           "name": "Váha",
@@ -258,7 +272,11 @@
       "fields": {
         "config_entry_id": {
           "name": "ID nastavení integrace",
-          "description": "Volitelné ID účtu. Je potřeba jen v případě, že je nastaveno více účtů."
+          "description": "Volitelné ID účtu. Má přednost před polem account. Cizí účet může volající uživatel použít jen pokud je správce nebo akce pochází z automatizace."
+        },
+        "account": {
+          "name": "Popisek účtu",
+          "description": "Volitelný popisek účtu z nastavení integrace. Výchozí je vlastní účet volajícího uživatele, pokud je přiřazený."
         },
         "query": {
           "name": "Dotaz",
@@ -280,7 +298,11 @@
       "fields": {
         "config_entry_id": {
           "name": "ID nastavení integrace",
-          "description": "Volitelné ID účtu. Je potřeba jen v případě, že je nastaveno více účtů."
+          "description": "Volitelné ID účtu. Má přednost před polem account. Cizí účet může volající uživatel použít jen pokud je správce nebo akce pochází z automatizace."
+        },
+        "account": {
+          "name": "Popisek účtu",
+          "description": "Volitelný popisek účtu z nastavení integrace. Výchozí je vlastní účet volajícího uživatele, pokud je přiřazený."
         },
         "query": {
           "name": "Dotaz",

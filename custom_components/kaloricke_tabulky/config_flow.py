@@ -12,18 +12,26 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import callback
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers import selector
 
+from .account import (
+    account_label,
+    default_label_for_email,
+    owner_user_id,
+)
 from .api import InvalidAuthError, KalorickeTabulkyApi, KalorickeTabulkyError
 from .const import (
+    CONF_ACCOUNT_LABEL,
+    CONF_OWNER_USER_ID,
     CONF_QUICK_FOODS,
     CONF_SCAN_INTERVAL,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     MIN_SCAN_INTERVAL,
 )
+from .session import async_create_kt_session
 
+ACCOUNT = "account"
 ADD_QUICK_FOOD = "add_quick_food"
 GENERAL = "general"
 IMPORT_RECIPES = "import_recipes"
@@ -54,6 +62,7 @@ def _user_schema() -> vol.Schema:
             vol.Required(CONF_PASSWORD): selector.TextSelector(
                 selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
             ),
+            vol.Optional(CONF_ACCOUNT_LABEL): str,
         }
     )
 
@@ -74,6 +83,41 @@ def _credentials_schema(email: str) -> vol.Schema:
             vol.Required(CONF_EMAIL, default=email): str,
             vol.Required(CONF_PASSWORD): selector.TextSelector(
                 selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+            ),
+        }
+    )
+
+
+def _account_schema(
+    label: str, owner: str | None, users: list[Any]
+) -> vol.Schema:
+    """Build the account label / HA user owner selector."""
+    current_owner = owner or ""
+    options = [
+        selector.SelectOptionDict(
+            value="", label="No owner (keep current behavior)"
+        ),
+        *[
+            selector.SelectOptionDict(
+                value=str(user.id), label=str(user.name or user.id)
+            )
+            for user in users
+        ],
+    ]
+    if current_owner and all(option["value"] != current_owner for option in options):
+        options.append(
+            selector.SelectOptionDict(value=current_owner, label=current_owner)
+        )
+    return vol.Schema(
+        {
+            vol.Required(CONF_ACCOUNT_LABEL, default=label): str,
+            vol.Required(
+                CONF_OWNER_USER_ID, default=current_owner
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=options,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
             ),
         }
     )
@@ -213,9 +257,11 @@ class KalorickeTabulkyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             email = user_input[CONF_EMAIL].strip().lower()
-            api = KalorickeTabulkyApi(
-                async_get_clientsession(self.hass), email, user_input[CONF_PASSWORD]
+            label = (
+                str(user_input.get(CONF_ACCOUNT_LABEL) or "").strip()
+                or default_label_for_email(email)
             )
+            api = self._new_api(email, user_input[CONF_PASSWORD])
             try:
                 await api.authenticate()
             except InvalidAuthError:
@@ -226,8 +272,12 @@ class KalorickeTabulkyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 await self.async_set_unique_id(email)
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title=email,
-                    data={CONF_EMAIL: email, CONF_PASSWORD: user_input[CONF_PASSWORD]},
+                    title=label,
+                    data={
+                        CONF_EMAIL: email,
+                        CONF_PASSWORD: user_input[CONF_PASSWORD],
+                        CONF_ACCOUNT_LABEL: label,
+                    },
                     options={CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL},
                 )
 
@@ -235,6 +285,12 @@ class KalorickeTabulkyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=_user_schema(),
             errors=errors,
+        )
+
+    def _new_api(self, email: str, password: str) -> KalorickeTabulkyApi:
+        """Create an API client with a private KT session."""
+        return KalorickeTabulkyApi(
+            async_create_kt_session(self.hass), email, password
         )
 
     @staticmethod
@@ -260,10 +316,46 @@ class KalorickeTabulkyOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Manage integration options."""
-        menu_options = [GENERAL, UPDATE_CREDENTIALS, ADD_QUICK_FOOD, IMPORT_RECIPES]
+        menu_options = [
+            ACCOUNT,
+            GENERAL,
+            UPDATE_CREDENTIALS,
+            ADD_QUICK_FOOD,
+            IMPORT_RECIPES,
+        ]
         if self._quick_foods:
             menu_options.append(REMOVE_QUICK_FOOD)
         return self.async_show_menu(step_id="init", menu_options=menu_options)
+
+    async def async_step_account(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Set the account label and the Home Assistant user who owns it."""
+        if user_input is not None:
+            label = str(user_input.get(CONF_ACCOUNT_LABEL) or "").strip()
+            if not label:
+                label = account_label(self._config_entry)
+            self.hass.config_entries.async_update_entry(
+                self._config_entry,
+                title=label,
+                data={
+                    **self._config_entry.data,
+                    CONF_ACCOUNT_LABEL: label,
+                },
+            )
+            options = self._current_options
+            options[CONF_OWNER_USER_ID] = user_input.get(CONF_OWNER_USER_ID) or None
+            return self.async_create_entry(title="", data=options)
+
+        users = await self.hass.auth.async_get_users()
+        return self.async_show_form(
+            step_id=ACCOUNT,
+            data_schema=_account_schema(
+                account_label(self._config_entry),
+                owner_user_id(self._config_entry),
+                users,
+            ),
+        )
 
     async def async_step_general(
         self, user_input: dict[str, Any] | None = None
@@ -292,11 +384,7 @@ class KalorickeTabulkyOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             email = user_input[CONF_EMAIL].strip().lower()
             password = user_input[CONF_PASSWORD]
-            api = KalorickeTabulkyApi(
-                async_get_clientsession(self.hass),
-                email,
-                password,
-            )
+            api = self._new_api(email, password)
             try:
                 await api.authenticate()
             except InvalidAuthError:
@@ -304,10 +392,16 @@ class KalorickeTabulkyOptionsFlow(config_entries.OptionsFlow):
             except KalorickeTabulkyError:
                 errors["base"] = "cannot_connect"
             else:
+                label = account_label(self._config_entry)
                 self.hass.config_entries.async_update_entry(
                     self._config_entry,
-                    title=email,
-                    data={**self._config_entry.data, CONF_EMAIL: email, CONF_PASSWORD: password},
+                    title=label,
+                    data={
+                        **self._config_entry.data,
+                        CONF_EMAIL: email,
+                        CONF_PASSWORD: password,
+                        CONF_ACCOUNT_LABEL: label,
+                    },
                 )
                 coordinator = getattr(self._config_entry, "runtime_data", None)
                 if coordinator is not None:
@@ -535,8 +629,7 @@ class KalorickeTabulkyOptionsFlow(config_entries.OptionsFlow):
         coordinator = getattr(self._config_entry, "runtime_data", None)
         if coordinator is not None:
             return coordinator.api
-        return KalorickeTabulkyApi(
-            async_get_clientsession(self.hass),
+        return self._new_api(
             self._config_entry.data[CONF_EMAIL],
             self._config_entry.data[CONF_PASSWORD],
         )

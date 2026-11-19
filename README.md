@@ -12,6 +12,7 @@
   - [Lovelace nutrient card example](#lovelace-nutrient-card-example)
   - [Lovelace energy card example](#lovelace-energy-card-example)
   - [Quick food buttons](#quick-food-buttons)
+  - [Multi-user households](#multi-user-households)
   - [Installation](#installation)
   - [Actions](#actions)
   - [Notes](#notes)
@@ -21,6 +22,7 @@
   - [Příklad Lovelace karty pro nutrienty](#příklad-lovelace-karty-pro-nutrienty)
   - [Příklad Lovelace karty pro energii](#příklad-lovelace-karty-pro-energii)
   - [Rychlá tlačítka jídla](#rychlá-tlačítka-jídla)
+  - [Více uživatelů v domácnosti](#více-uživatelů-v-domácnosti)
   - [Instalace](#instalace)
   - [Akce](#akce)
   - [Poznámky](#poznámky)
@@ -365,6 +367,56 @@ show_name: true
 show_icon: true
 ```
 
+### Multi-user households
+
+One config entry represents one Kaloricke Tabulky account. For four people, add
+four entries, one per KT account, then give each entry an identity:
+
+1. Open the integration options and choose **Account and owner**.
+2. Enter a display label such as `Ana` or `Jan`. The label is used for the device
+   and entity names instead of the email address, which stays internal.
+3. Select the Home Assistant user who owns that KT account. This step is
+   available to administrators only.
+
+**Writes.** Actions (`record_weight`, `record_food`, `search_food`) automatically
+target the calling user's own account when an owner is assigned. You can also
+select an account explicitly with `account: Ana` or `config_entry_id: ...`. A
+user cannot write to an account owned by someone else; the action fails with a
+not-authorized error. Administrators and automations (calls without a user) are
+still allowed, so a shared automation can write to any diary. Quick food buttons
+write to the account they belong to; Home Assistant checks button permissions
+and the integration also rejects presses by a different non-admin user.
+
+**Reads and visibility.** The integration does not hide other people's sensors
+by itself. Home Assistant entities are global, and the default `Users` group can
+read all of them. For actual privacy, either run one Home Assistant instance per
+person, or create a custom Home Assistant group per person: remove those users
+from the default `Users` group and grant only their own KT device plus any
+shared devices, for example:
+
+```json
+{
+  "entities": {
+    "device_ids": {
+      "<device registry id for Ana's KT entry>": {
+        "read": true,
+        "control": true
+      }
+    },
+    "domains": {"light": true, "switch": true}
+  }
+}
+```
+
+The device registry id is not the config entry id; find it in the device details
+in Home Assistant. Group policies are merged, so any `True` from another group
+re-enables access. The Home Assistant owner and administrators are exempt from
+entity permissions. Separate per-user dashboards are convenient but are **not**
+a security boundary on their own.
+
+Existing single-account installations keep working unchanged: entries without
+an assigned owner keep the previous permissive behavior.
+
 ### Installation
 
 #### HACS custom repository
@@ -410,7 +462,9 @@ data:
 Accepted date formats are `YYYY-MM-DD` and `DD.MM.YYYY`.
 
 If you configure more than one Kaloricke Tabulky account, pass
-`config_entry_id` to choose the account.
+`config_entry_id` to choose the account. You can also use `account: Ana` with
+the account label. When the calling user has an owner assigned, actions default
+to that user's own account; see [Multi-user households](#multi-user-households).
 
 #### Search food or drinks
 
@@ -826,6 +880,56 @@ show_name: true
 show_icon: true
 ```
 
+### Více uživatelů v domácnosti
+
+Jedno nastavení integrace představuje jeden účet Kalorických Tabulek. Pro čtyři
+lidi přidej čtyři účty a každému nastav identitu:
+
+1. Otevři nastavení integrace a vyber **Účet a vlastník**.
+2. Zadej zobrazovaný popisek, například `Ana` nebo `Jan`. Popisek se použije pro
+   název zařízení a entit místo e-mailové adresy, která zůstává interní.
+3. Vyber Home Assistant uživatele, kterému tento účet patří. Tento krok je
+   dostupný jen pro správce.
+
+**Zápisy.** Akce (`record_weight`, `record_food`, `search_food`) automaticky
+pracují s vlastním účtem volajícího uživatele, pokud má přiřazeného vlastníka.
+Účet jde taky vybrat výslovně pomocí `account: Ana` nebo `config_entry_id: ...`.
+Uživatel nemůže zapisovat do cizího účtu; akce selže s chybou oprávnění. Správci
+a automatizace (volání bez uživatele) pořád fungují, takže sdílená automatizace
+může zapisovat do libovolného deníku. Rychlá tlačítka zapisují do účtu, ke
+kterému patří; Home Assistant kontroluje oprávnění tlačítka a integrace navíc
+odmítne stisk jiným uživatelem, který není správcem.
+
+**Čtení a viditelnost.** Integrace sama o sobě entity ostatních lidí neskrývá.
+Entity v Home Assistantu jsou globální a výchozí skupina `Users` může číst vše.
+Pokud chceš opravdové soukromí, používej jednu instanci Home Assistantu na osobu,
+nebo vytvoř pro každého vlastní skupinu: odeber uživatele z výchozí skupiny
+`Users` a povol jen jeho vlastní zařízení Kalorických Tabulek a sdílená zařízení,
+například:
+
+```json
+{
+  "entities": {
+    "device_ids": {
+      "<id zařízení v registru pro Ana účet>": {
+        "read": true,
+        "control": true
+      }
+    },
+    "domains": {"light": true, "switch": true}
+  }
+}
+```
+
+ID zařízení v registru není ID nastavení integrace; najdeš ho v detailu zařízení
+v Home Assistantu. Pravidla skupin se slučují, takže jakékoliv `True` z jiné
+skupiny přístup znovu povolí. Vlastník a správci Home Assistantu jsou z
+kontroly oprávnění vyňati. Samostatné dashboardy pro každého uživatele jsou
+pohodlné, ale samy o sobě **nejsou** bezpečnostní hranicí.
+
+Stávající instalace s jedním účtem fungují beze změny: účty bez přiřazeného
+vlastníka si zachovávají dosavadní chování.
+
 ### Instalace
 
 #### HACS custom repository
@@ -871,7 +975,10 @@ data:
 Podporované formáty data jsou `YYYY-MM-DD` a `DD.MM.YYYY`.
 
 Pokud máš nastavený více než jeden účet Kalorických Tabulek, přidej
-`config_entry_id`, aby bylo jasné, do kterého účtu se má váha zapsat.
+`config_entry_id`, aby bylo jasné, do kterého účtu se má váha zapsat. Jde taky
+použít `account: Ana` s popiskem účtu. Pokud má volající uživatel přiřazeného
+vlastníka, akce výchozím cílem použijí jeho účet; viz
+[Více uživatelů v domácnosti](#více-uživatelů-v-domácnosti).
 
 #### Hledat jídlo nebo pití
 

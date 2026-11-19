@@ -10,3 +10,4 @@ __pycache__/
 .storage/
 home-assistant.log*
 home-assistant_v2.db*
+AGENTS.md

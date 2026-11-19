@@ -1,12 +1,12 @@
 {
   "domain": "kaloricke_tabulky",
   "name": "Kaloricke Tabulky",
-  "codeowners": ["@nikopol666"],
+  "codeowners": ["@nikopol666,H0u0uinKy0um4"],
   "config_flow": true,
-  "documentation": "https://github.com/nikopol666/homeassistant-kaloricke-tabulky",
-  "issue_tracker": "https://github.com/nikopol666/homeassistant-kaloricke-tabulky/issues",
+  "documentation": "https://github.com/H0u0uinKy0um4/homeassistant-kaloricke-tabulky",
+  "issue_tracker": "https://github.com/H0u0uinKy0um4/homeassistant-kaloricke-tabulky/issues",
   "integration_type": "service",
   "iot_class": "cloud_polling",
   "requirements": [],
-  "version": "0.4.0"
+  "version": "0.4.1"
 }

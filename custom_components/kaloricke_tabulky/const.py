@@ -8,9 +8,11 @@ DOMAIN = "kaloricke_tabulky"
 
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_QUICK_FOODS = "quick_foods"
+CONF_ACCOUNT_LABEL = "account_label"
+CONF_OWNER_USER_ID = "owner_user_id"
 
 DEFAULT_SCAN_INTERVAL = 240
-MIN_SCAN_INTERVAL = 15
+MIN_SCAN_INTERVAL = 1
 DEFAULT_SCAN_INTERVAL_DELTA = timedelta(minutes=DEFAULT_SCAN_INTERVAL)
 
 PLATFORMS = ["sensor"]
@@ -19,6 +21,7 @@ SERVICE_RECORD_WEIGHT = "record_weight"
 SERVICE_SEARCH_FOOD = "search_food"
 SERVICE_RECORD_FOOD = "record_food"
 ATTR_CONFIG_ENTRY_ID = "config_entry_id"
+ATTR_ACCOUNT = "account"
 ATTR_WEIGHT = "weight"
 ATTR_DATE = "date"
 ATTR_QUERY = "query"

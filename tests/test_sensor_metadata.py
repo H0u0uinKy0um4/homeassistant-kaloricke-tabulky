@@ -26,6 +26,8 @@ def _load_sensor():
 
     const = types.ModuleType("custom_components.kaloricke_tabulky.const")
     const.DOMAIN = "kaloricke_tabulky"
+    const.CONF_ACCOUNT_LABEL = "account_label"
+    const.CONF_OWNER_USER_ID = "owner_user_id"
 
     coordinator = types.ModuleType("custom_components.kaloricke_tabulky.coordinator")
     coordinator.KalorickeTabulkyCoordinator = type(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import importlib.util
 from pathlib import Path
 import sys
@@ -34,9 +35,14 @@ def _load_config_flow():
     const = types.ModuleType("custom_components.kaloricke_tabulky.const")
     const.CONF_QUICK_FOODS = "quick_foods"
     const.CONF_SCAN_INTERVAL = "scan_interval"
+    const.CONF_ACCOUNT_LABEL = "account_label"
+    const.CONF_OWNER_USER_ID = "owner_user_id"
     const.DEFAULT_SCAN_INTERVAL = 240
     const.DOMAIN = "kaloricke_tabulky"
     const.MIN_SCAN_INTERVAL = 15
+
+    session = types.ModuleType("custom_components.kaloricke_tabulky.session")
+    session.async_create_kt_session = lambda hass: None
 
     config_entries = types.ModuleType("homeassistant.config_entries")
 
@@ -65,6 +71,7 @@ def _load_config_flow():
             "custom_components.kaloricke_tabulky",
             "custom_components.kaloricke_tabulky.api",
             "custom_components.kaloricke_tabulky.const",
+            "custom_components.kaloricke_tabulky.session",
             "homeassistant.config_entries",
             "homeassistant.core",
             "homeassistant.helpers.aiohttp_client",
@@ -76,6 +83,7 @@ def _load_config_flow():
             "custom_components.kaloricke_tabulky": package,
             "custom_components.kaloricke_tabulky.api": api,
             "custom_components.kaloricke_tabulky.const": const,
+            "custom_components.kaloricke_tabulky.session": session,
             "homeassistant.config_entries": config_entries,
             "homeassistant.core": core,
             "homeassistant.helpers.aiohttp_client": aiohttp_client,
@@ -211,6 +219,71 @@ class UpdateCredentialsSchemaTest(unittest.TestCase):
 
         self.assertEqual(validated["email"], "tom@example.test")
         self.assertEqual(validated["password"], "new-password")
+
+
+class AccountOptionsFlowTest(unittest.IsolatedAsyncioTestCase):
+    """Cover the account label / owner options step."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.config_flow = _load_config_flow()
+
+    def _flow(self):
+        entry = types.SimpleNamespace(
+            entry_id="e1",
+            title="old@example.test",
+            data={"email": "old@example.test", "password": "secret"},
+            options={"scan_interval": 240},
+        )
+        calls = []
+        auth = types.SimpleNamespace(
+            async_get_users=self._async_get_users,
+            async_users=self._unexpected_async_users,
+        )
+        hass = types.SimpleNamespace(
+            auth=auth,
+            config_entries=types.SimpleNamespace(
+                async_update_entry=lambda entry, **kwargs: calls.append((entry, kwargs))
+            ),
+        )
+        flow = self.config_flow.KalorickeTabulkyOptionsFlow(entry)
+        flow.hass = hass
+        flow.async_show_form = lambda **kwargs: kwargs
+        flow.async_create_entry = lambda **kwargs: kwargs
+        return flow, calls
+
+    async def _async_get_users(self):
+        return [
+            types.SimpleNamespace(id="u1", name="Ana"),
+            types.SimpleNamespace(id="u2", name=None),
+        ]
+
+    async def _unexpected_async_users(self):
+        raise AssertionError("async_users is not a Home Assistant auth API")
+
+    async def test_form_uses_real_auth_api_and_offers_users(self) -> None:
+        flow, _ = self._flow()
+
+        result = await flow.async_step_account()
+
+        self.assertEqual(result["step_id"], "account")
+        validated = result["data_schema"](
+            {"account_label": "Ana", "owner_user_id": "u2"}
+        )
+        self.assertEqual(
+            validated, {"account_label": "Ana", "owner_user_id": "u2"}
+        )
+
+    async def test_submit_saves_label_and_owner(self) -> None:
+        flow, calls = self._flow()
+
+        result = await flow.async_step_account(
+            {"account_label": "Ana", "owner_user_id": "u2"}
+        )
+
+        self.assertEqual(result["data"]["owner_user_id"], "u2")
+        self.assertEqual(calls[0][1]["title"], "Ana")
+        self.assertEqual(calls[0][1]["data"]["account_label"], "Ana")
 
 
 class ImportCustomRecipeButtonsTest(unittest.TestCase):

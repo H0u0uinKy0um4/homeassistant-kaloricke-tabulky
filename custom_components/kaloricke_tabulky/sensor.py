@@ -17,6 +17,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .account import account_label
 from .api import SummaryMetric
 from .const import DOMAIN
 from .coordinator import KalorickeTabulkyCoordinator
@@ -166,7 +167,7 @@ class LatestWeightSensor(CoordinatorEntity[KalorickeTabulkyCoordinator], SensorE
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry.entry_id)},
             manufacturer="Kaloricke Tabulky",
-            name=self._entry.title,
+            name=account_label(self._entry),
         )
 
     @property
@@ -222,7 +223,7 @@ class SummaryMetricSensor(CoordinatorEntity[KalorickeTabulkyCoordinator], Sensor
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry.entry_id)},
             manufacturer="Kaloricke Tabulky",
-            name=self._entry.title,
+            name=account_label(self._entry),
         )
 
     @property
@@ -273,7 +274,7 @@ class KnownSummaryMetricSensor(
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry.entry_id)},
             manufacturer="Kaloricke Tabulky",
-            name=self._entry.title,
+            name=account_label(self._entry),
         )
 
     @property
