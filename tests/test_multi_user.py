@@ -128,6 +128,7 @@ def _load_modules():
     const.SERVICE_RECORD_WEIGHT = "record_weight"
     const.SERVICE_SEARCH_FOOD = "search_food"
     const.SERVICE_RECORD_FOOD = "record_food"
+    const.SERVICE_GET_SUMMARY = "get_summary"
 
     coordinator = types.ModuleType("custom_components.kaloricke_tabulky.coordinator")
     coordinator.KalorickeTabulkyCoordinator = object
@@ -210,7 +211,16 @@ def _hass(entries, users=None, state="loaded"):
         entry.state = state
     auth = types.SimpleNamespace(async_get_user=_async_get_user)
     config_entries = types.SimpleNamespace(async_entries=lambda domain: entries)
-    return types.SimpleNamespace(auth=auth, config_entries=config_entries)
+    registered = {}
+
+    def _async_register(domain, name, handler, **kwargs):
+        registered[(domain, name)] = (handler, kwargs)
+
+    services = types.SimpleNamespace(async_register=_async_register)
+    return types.SimpleNamespace(
+        auth=auth, config_entries=config_entries, services=services,
+        registered=registered,
+    )
 
 
 def _call(data=None, user_id=None):
@@ -395,6 +405,71 @@ class ButtonOwnerTest(unittest.IsolatedAsyncioTestCase):
         await method(
             types.SimpleNamespace(_entry=entry, hass=hass, _context=None)
         )
+
+
+class GetSummaryServiceTest(unittest.IsolatedAsyncioTestCase):
+    """Cover the owner-aware read service used by display integrations."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.integration, _, cls.exceptions, _ = _load_modules()
+
+    def _hass_with_data(self, entries, users=None):
+        hass = _hass(entries, users)
+        for entry in entries:
+            entry.runtime_data.data = types.SimpleNamespace(
+                metrics={
+                    "energy": types.SimpleNamespace(
+                        key="energy", value=1500.0, unit="kcal",
+                        goal=2000, percent=75,
+                    )
+                },
+                weight_records=[types.SimpleNamespace(weight=72.5)],
+            )
+        return hass
+
+    async def _handler(self, hass):
+        await self.integration.async_setup(hass, {})
+        handler, kwargs = hass.registered[("kaloricke_tabulky", "get_summary")]
+        self.assertEqual(kwargs["supports_response"], "only")
+        return handler
+
+    async def test_user_gets_own_summary(self) -> None:
+        entries = [_entry("e1", "Ana", "u1"), _entry("e2", "Jan", "u2")]
+        hass = self._hass_with_data(
+            entries,
+            {
+                "u1": types.SimpleNamespace(id="u1", is_admin=False),
+                "u2": types.SimpleNamespace(id="u2", is_admin=False),
+            },
+        )
+        handler = await self._handler(hass)
+
+        result = await handler(_call(user_id="u2"))
+
+        self.assertEqual(result["account"], "Jan")
+        self.assertEqual(result["metrics"]["energy"]["value"], 1500.0)
+        self.assertEqual(result["weight"], 72.5)
+
+    async def test_user_cannot_read_another_account(self) -> None:
+        entries = [_entry("e1", "Ana", "u1"), _entry("e2", "Jan", "u2")]
+        hass = self._hass_with_data(
+            entries,
+            {"u1": types.SimpleNamespace(id="u1", is_admin=False)},
+        )
+        handler = await self._handler(hass)
+
+        with self.assertRaises(self.exceptions.Unauthorized):
+            await handler(_call({"account": "Jan"}, user_id="u1"))
+
+    async def test_automation_can_read_with_explicit_account(self) -> None:
+        entries = [_entry("e1", "Ana", "u1"), _entry("e2", "Jan", "u2")]
+        hass = self._hass_with_data(entries)
+        handler = await self._handler(hass)
+
+        result = await handler(_call({"config_entry_id": "e2"}))
+
+        self.assertEqual(result["account"], "Jan")
 
 
 if __name__ == "__main__":

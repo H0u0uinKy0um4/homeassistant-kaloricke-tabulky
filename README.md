@@ -40,6 +40,8 @@ Home Assistant custom integration for Kaloricke Tabulky.
 - Adds a `kaloricke_tabulky.record_weight` action for recording body weight.
 - Adds `kaloricke_tabulky.search_food` and `kaloricke_tabulky.record_food`
   actions for searching and recording foods or drinks.
+- Adds a `kaloricke_tabulky.get_summary` action that returns the calling user's
+  own summary for dashboards and display integrations.
 - Creates optional quick food button entities from integration options.
   Pressing a button records the configured food amount with the current Home
   Assistant date and time.
@@ -394,6 +396,14 @@ person, or create a custom Home Assistant group per person: remove those users
 from the default `Users` group and grant only their own KT device plus any
 shared devices, for example:
 
+For display integrations and other backend consumers, use the
+`kaloricke_tabulky.get_summary` action instead of reading sensor states. It
+resolves the caller's own account from the owner mapping, rejects another user's
+account, and returns `account`, `metrics` and `weight`. A caller with no user
+context (an automation) must select an account explicitly when more than one is
+configured. The Split-Flap OS **Calories** app uses this action to show the
+calories of the user who launched it.
+
 ```json
 {
   "entities": {
@@ -554,6 +564,8 @@ Vlastní integrace Kalorické Tabulky pro Home Assistant.
 - Přidá akci `kaloricke_tabulky.record_weight` pro zápis tělesné váhy.
 - Přidá akce `kaloricke_tabulky.search_food` a
   `kaloricke_tabulky.record_food` pro hledání a zápis jídla nebo pití.
+- Přidá akci `kaloricke_tabulky.get_summary`, která vrátí přehled vlastního
+  účtu volajícího uživatele pro panely a displejové integrace.
 - Umí vytvořit volitelné entity rychlých tlačítek jídla z nastavení integrace.
   Stisk tlačítka zapíše nastavenou potravinu v daném množství s aktuálním
   datem a časem Home Assistantu.
@@ -906,6 +918,13 @@ Pokud chceš opravdové soukromí, používej jednu instanci Home Assistantu na 
 nebo vytvoř pro každého vlastní skupinu: odeber uživatele z výchozí skupiny
 `Users` a povol jen jeho vlastní zařízení Kalorických Tabulek a sdílená zařízení,
 například:
+
+Pro displejové integrace a další čtení na pozadí používej akci
+`kaloricke_tabulky.get_summary` místo čtení stavů senzorů. Akce najde vlastní
+účet volajícího uživatele podle mapování vlastníků, odmítne cizí účet a vrátí
+`account`, `metrics` a `weight`. Volání bez uživatele (automatizace) musí účet
+vybrat výslovně, pokud je nastaveno více účtů. Aplikace **Kalorie** v Split-Flap
+OS touto akcí zobrazuje kalorie uživatele, který aplikaci spustil.
 
 ```json
 {

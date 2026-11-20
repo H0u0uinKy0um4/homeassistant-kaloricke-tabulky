@@ -20,6 +20,7 @@ PLATFORMS = ["sensor"]
 SERVICE_RECORD_WEIGHT = "record_weight"
 SERVICE_SEARCH_FOOD = "search_food"
 SERVICE_RECORD_FOOD = "record_food"
+SERVICE_GET_SUMMARY = "get_summary"
 ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 ATTR_ACCOUNT = "account"
 ATTR_WEIGHT = "weight"

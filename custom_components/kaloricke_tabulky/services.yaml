@@ -164,3 +164,20 @@ record_food:
             - afternoon_snack
             - dinner
             - second_dinner
+
+get_summary:
+  name: Get summary
+  description: Return the current summary for the calling user's own account, or for an explicitly selected account. Other users' accounts are rejected unless the caller is an admin or an automation.
+  fields:
+    config_entry_id:
+      name: Config entry ID
+      description: Optional account entry ID. Overrides the account field. Access to another user's account is allowed only for admins and automations.
+      required: false
+      selector:
+        text:
+    account:
+      name: Account label
+      description: Optional account label from the integration options. Defaults to the calling user's own account when one is assigned.
+      required: false
+      selector:
+        text:

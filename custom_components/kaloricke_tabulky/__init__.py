@@ -40,6 +40,7 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     MIN_SCAN_INTERVAL,
+    SERVICE_GET_SUMMARY,
     SERVICE_RECORD_FOOD,
     SERVICE_RECORD_WEIGHT,
     SERVICE_SEARCH_FOOD,
@@ -87,6 +88,13 @@ SERVICE_RECORD_FOOD_SCHEMA = vol.Schema(
         vol.Optional(ATTR_DATE): cv.string,
         vol.Optional(ATTR_TIME): cv.string,
         vol.Optional(ATTR_MEAL_TYPE): cv.string,
+    }
+)
+
+SERVICE_GET_SUMMARY_SCHEMA = vol.Schema(
+    {
+        vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
+        vol.Optional(ATTR_ACCOUNT): cv.string,
     }
 )
 
@@ -151,6 +159,31 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         await coordinator.async_request_refresh()
         return result if call.return_response else None
 
+    async def handle_get_summary(call: ServiceCall) -> ServiceResponse:
+        entry, coordinator = await _entry_and_coordinator_from_service_call(
+            hass, call, "reading summary"
+        )
+        data = coordinator.data
+        metrics = {}
+        if data is not None:
+            metrics = {
+                key: {
+                    "value": metric.value,
+                    "unit": metric.unit,
+                    "goal": metric.goal,
+                    "percent": metric.percent,
+                }
+                for key, metric in data.metrics.items()
+            }
+        weight = None
+        if data is not None and data.weight_records:
+            weight = data.weight_records[-1].weight
+        return {
+            "account": account_label(entry),
+            "metrics": metrics,
+            "weight": weight,
+        }
+
     hass.services.async_register(
         DOMAIN,
         SERVICE_RECORD_WEIGHT,
@@ -170,6 +203,13 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         handle_record_food,
         schema=SERVICE_RECORD_FOOD_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_SUMMARY,
+        handle_get_summary,
+        schema=SERVICE_GET_SUMMARY_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
     )
     return True
 
@@ -244,9 +284,9 @@ async def _async_assert_owner(
         raise Unauthorized(context=call.context, config_entry_id=entry.entry_id)
 
 
-async def _coordinator_from_service_call(
+async def _entry_and_coordinator_from_service_call(
     hass: HomeAssistant, call: ServiceCall, action: str
-) -> KalorickeTabulkyCoordinator:
+) -> tuple[ConfigEntry, KalorickeTabulkyCoordinator]:
     user = await _async_calling_user(hass, call)
     entry = await _async_select_entry(hass, call, user, action)
     await _async_assert_owner(call, entry, user)
@@ -262,6 +302,15 @@ async def _coordinator_from_service_call(
             f"Kaloricke Tabulky account is not ready for {action}"
         )
 
+    return entry, coordinator
+
+
+async def _coordinator_from_service_call(
+    hass: HomeAssistant, call: ServiceCall, action: str
+) -> KalorickeTabulkyCoordinator:
+    _, coordinator = await _entry_and_coordinator_from_service_call(
+        hass, call, action
+    )
     return coordinator
 
 

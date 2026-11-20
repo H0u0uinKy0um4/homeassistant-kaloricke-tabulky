@@ -341,6 +341,20 @@
           "description": "Volitelné ruční nastavení typu jídla. Když chybí, integrace ho přiřadí podle času."
         }
       }
+    },
+    "get_summary": {
+      "name": "Získat přehled",
+      "description": "Vrátí aktuální přehled pro vlastní účet volajícího uživatele nebo pro výslovně vybraný účet. Cizí účet je odmítnut, pokud volající není administrátor nebo automatizace.",
+      "fields": {
+        "config_entry_id": {
+          "name": "ID konfigurace",
+          "description": "Volitelné ID účtu. Přepisuje pole account. Přístup k cizímu účtu mají jen administrátoři a automatizace."
+        },
+        "account": {
+          "name": "Název účtu",
+          "description": "Volitelný název účtu z nastavení integrace. Výchozí je vlastní účet volajícího uživatele, pokud je přiřazen."
+        }
+      }
     }
   }
 }
